@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  gpt-vis-ssr:
+    image: hsunnyc/gpt-vis-ssr:latest
+    build: ./gpt_vis_ssr
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./gpt_vis_ssr/images:/app/public/images
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+      - PUBLIC_BASE_URL=http://localhost:3000
+    restart: unless-stopped
+
+  mcp-server-chart:
+    image: hsunnyc/mcp-server-chart:latest
+    build: .
+    ports:
+      - "1123:1123"
+    environment:
+      - VIS_REQUEST_SERVER=http://gpt-vis-ssr:3000/render
+    depends_on:
+      - gpt-vis-ssr
