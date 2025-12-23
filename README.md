@@ -18,6 +18,62 @@ docker-compose up -d --build
 - MCP Server：`http://localhost:1123`
 - 渲染服务：`http://localhost:3000`
 
+## 仅使用已构建镜像启动
+无需拉取项目源码，直接使用已构建镜像启动即可：
+
+```yaml
+version: "3.8"
+
+services:
+  gpt-vis-ssr:
+    image: hsunnyc/gpt-vis-ssr:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./images:/app/public/images
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+      - PUBLIC_BASE_URL=http://localhost:3000
+    restart: unless-stopped
+
+  mcp-server-chart:
+    image: hsunnyc/mcp-server-chart:latest
+    ports:
+      - "1123:1123"
+    environment:
+      - VIS_REQUEST_SERVER=http://gpt-vis-ssr:3000/render
+    depends_on:
+      - gpt-vis-ssr
+```
+
+保存为 `docker-compose.yml` 后运行：
+```bash
+docker-compose up -d
+```
+
+## 多架构镜像发布（M 系列可用）
+M 系列本地构建默认是 `linux/arm64`，为兼容 x86 机器，需发布多架构镜像。下面示例同时构建并推送 `linux/amd64` + `linux/arm64`：
+
+```bash
+# 仅需一次：创建并启用 buildx builder
+docker buildx create --use --name multiarch-builder
+
+# 构建并推送 mcp-server-chart
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t hsunnyc/mcp-server-chart:latest \
+  --push \
+  .
+
+# 构建并推送 gpt-vis-ssr
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t hsunnyc/gpt-vis-ssr:latest \
+  --push \
+  ./gpt_vis_ssr
+```
+
 ## 配置说明
 `docker-compose.yml` 中关键环境变量：
 - `VIS_REQUEST_SERVER`：`mcp-server-chart` 调用渲染服务的地址，默认 `http://gpt-vis-ssr:3000/render`
